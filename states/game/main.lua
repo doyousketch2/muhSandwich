@@ -89,7 +89,7 @@ function Lo .update( dt ) -- DeltaTime  = time since last update,  in seconds.
 
   if key .isDown( 'a' ) then
     desiredX  = desiredX +math.sin(player.dir) *player.speed
-    desiredY  = desiredY +math.cos(player.dir) *player.speed
+    desiredY  = desiredY -math.cos(player.dir) *player.speed
   end -- if key 'A'
 
   if key .isDown( 's' ) then
@@ -98,8 +98,9 @@ function Lo .update( dt ) -- DeltaTime  = time since last update,  in seconds.
   end -- if key 'S'
 
   if key .isDown( 'd' ) then
+
     desiredX  = desiredX -math.sin(player.dir) *player.speed
-    desiredY  = desiredY -math.cos(player.dir) *player.speed
+    desiredY  = desiredY +math.cos(player.dir) *player.speed
   end -- if key 'D'
 
   if desiredX >= 1 and desiredX < map .x then player .x  = desiredX end
