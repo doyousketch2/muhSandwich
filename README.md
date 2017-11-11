@@ -3,9 +3,8 @@ Love2D Raycast attempt
 
 It's botched, I know it.  
 I get the general idea, it's just hard to do.  
-And, as it turns out, the turtorial has just disappeared from the 'net.  
 
-http://permadi.com/1996/05/ray-casting-tutorial-1/
+http://www.permadi.com/tutorial/raycast/rayc1.html
 
 
 ---  
