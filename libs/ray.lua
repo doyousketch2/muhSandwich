@@ -1,5 +1,4 @@
 ray  = {} -- namespace
--- Using Scratch dir conventions:  0° is up, turning clockwise.
 
 ray .dist  = {}
 ray .wall  = {}
