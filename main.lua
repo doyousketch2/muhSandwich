@@ -80,34 +80,49 @@ function loadState( state )
 end
 
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--[[
 
-function hCollide(x, y, a) -- collide w/ a horizontal wall
-  local xx  = 1
-  local yy  = -1
+             90
+             |
+             |
+        II   |   I
+             |
+  180 ~~~~~~~+~~~~~~~ 0
+             |
+       III   |  IV
+             |
+             |
+            270
 
-  if a >= 90 and a < 270 then
-    xx  = math.ceil(x)
-  else
-    xx  = math.floor(x)
-  end -- xx
 
-  if a > 180 then yy  = 1 end -- yy
+Rays in quadrant I  approaching Horiz wall:  (1.25, 1.25)  ~  (1.25, 1)  floor y
+Rays in quadrant I  approaching Vert wall:  (1.25, 1.25)  ~  (1, 1.25)  floor x
 
-  return xx, yy
+Rays in quadrant II  approaching Horiz wall:  (-1.25, 1.25)   ~  (-1.25, 1)  floor y
+Rays in quadrant II  approaching Vert wall:  (-1.25, 1.25)   ~  (-1, 1.25)  floor x
+
+Rays in quadrant III  approaching Horiz wall:  (-1.25, -1.25)  ~  (-1.25, -1)  floor y
+Rays in quadrant III  approaching Vert wall:  (-1.25, -1.25)  ~  (-1, -1.25)  floor x
+
+Rays in quadrant IV  approaching Horiz wall:  (1.25, -1.25)   ~  (1.25, -1)  floor y
+Rays in quadrant IV  approaching Vert wall:  (1.25, -1.25)   ~  (1, -1.25)  floor x
+
+
+I'll have to think about this more, I dunno exactly how they accomplish it.
+
+I've done it before, couple'a times, in Scratch, Python, and possibly even Lua,
+by following someone else's code tho.  So the idea hasn't gelled.
+
+]]--
+
+
+function hInteger(x, y, angle) -- drop decimal, for rays intended to run into horizontal walls
+  return x, math.floor(y)
 end
 
 
-function vCollide(x, y, a) -- collide w/ a vertical wall
-  local xx  = 1
-  local yy  = 1
-
-  if a >= 90 and a < 270 then xx  = -1  end -- xx
-
-  if a > 180 then yy  = math.ceil(y)
-  else yy  = -math.floor(y)
-  end -- yy
-
-  return xx, yy
+function vInteger(x, y, angle) -- drop decimal, for rays intended to run into vertical walls
+  return math.floor(x), y
 end
 
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -153,4 +168,3 @@ function Lo .quit() -- do stuff before exit,  autosave,  say goodbye...
 end -- Lo .quit()
 
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
