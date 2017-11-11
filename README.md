@@ -4,7 +4,10 @@ Love2D Raycast attempt
 It's botched, I know it.  
 I get the general idea, it's just hard to do.  
 
-http://www.permadi.com/tutorial/raycast/rayc1.html
+http://www.permadi.com/tutorial/raycast/rayc1.html  
+
+Oh, and here's a copy of the one I followed, from Internet Archive  
+https://web.archive.org/web/20161231180909/http://permadi.com/1996/05/ray-casting-tutorial-table-of-contents/  
 
 
 ---  
