@@ -42,8 +42,8 @@ function ray :cast()
     local collide  = false --======================================================================
 
     while collide == false do
-      rndHx, rndHy  = hCollide( horizX, horizY, a )
-      rndVx, rndVy  = vCollide(  vertX, vertY, a )
+      rndHx, rndHy  = hInteger( horizX, horizY, a )
+      rndVx, rndVy  = vInteger(  vertX, vertY, a )
 
       if     rndHx < 1 or rndHx > map .x then -- Test horiz components for out of bounds
         collide  = true
