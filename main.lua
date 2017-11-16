@@ -2,7 +2,8 @@
 --  Löve theTemplate       GNU GPLv3          @Doyousketch2
 
 -- global abbreviations,  can be used in any module.
-Lo   = love                  tau  = math .pi *2
+Lo   = love                  halfpi  = math.pi /2
+threeqpi  = math.pi *0.75    tau  = math.pi *2
 -- look in conf.lua to enable necessary modules.
 aud  = Lo .audio             mou  = Lo .mouse
 eve  = Lo .event             phy  = Lo .physics
@@ -33,12 +34,15 @@ h66  = HH *0.667                    h75  = HH *0.75
 -- it appears local vars aren't accessible through gamestates, using globals instead.
 -- not a biggie, just make sure you don't re-use names for something else.
 
-fov  = 90
-halfFov  = fov /2
+FOV  = 90
+halfFOV  = FOV /2
 timer  = 0
 
 level  = 1
-player  = {  dir = 0,  x = 2,  y = 3,  speed = .1,  begin  = 0  }
+player  = {  dir = 0,
+             begin  = 0,  -- 'begin' is FOV turned left halfway, where raycasting begins
+             x = 2, y = 3,  -- pos
+             speed = .1  }
 
 style  = 'data/fonts/C64_Pro-STYLE.ttf'
 smallFontSize   = 16
@@ -73,56 +77,10 @@ end
 
 function loadState( state )
   clearCallbacks()
-  require ('states.' ..state ..'.main')
+  require( 'states.' ..state )
 
   print( 'Gamestate:  ' ..state )
   load()
-end
-
---~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
---[[
-
-             90
-             |
-             |
-        II   |   I
-             |
-  180 ~~~~~~~+~~~~~~~ 0
-             |
-       III   |  IV
-             |
-             |
-            270
-
-
-Rays in quadrant I  approaching Horiz wall:  (1.25, 1.25)  ~  (1.25, 1)  floor y
-Rays in quadrant I  approaching Vert wall:  (1.25, 1.25)  ~  (1, 1.25)  floor x
-
-Rays in quadrant II  approaching Horiz wall:  (-1.25, 1.25)   ~  (-1.25, 1)  floor y
-Rays in quadrant II  approaching Vert wall:  (-1.25, 1.25)   ~  (-1, 1.25)  floor x
-
-Rays in quadrant III  approaching Horiz wall:  (-1.25, -1.25)  ~  (-1.25, -1)  floor y
-Rays in quadrant III  approaching Vert wall:  (-1.25, -1.25)  ~  (-1, -1.25)  floor x
-
-Rays in quadrant IV  approaching Horiz wall:  (1.25, -1.25)   ~  (1.25, -1)  floor y
-Rays in quadrant IV  approaching Vert wall:  (1.25, -1.25)   ~  (1, -1.25)  floor x
-
-
-I'll have to think about this more, I dunno exactly how they accomplish it.
-
-I've done it before, couple'a times, in Scratch, Python, and possibly even Lua,
-by following someone else's code tho.  So the idea hasn't gelled.
-
-]]--
-
-
-function hInteger(x, y, angle) -- drop decimal, for rays intended to run into horizontal walls
-  return x, math.floor(y)
-end
-
-
-function vInteger(x, y, angle) -- drop decimal, for rays intended to run into vertical walls
-  return math.floor(x), y
 end
 
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
