@@ -1,98 +1,128 @@
-ray  = {} -- namespace
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--  Löve theTemplate       GNU GPLv3          @Doyousketch2
 
-ray .dist  = {}
-ray .wall  = {}
-ray .color  = {}
+-- global abbreviations,  can be used in any module.
+Lo   = love                  halfpi  = math.pi /2
+threeqpi  = math.pi *0.75    tau  = math.pi *2
+-- look in conf.lua to enable necessary modules.
+aud  = Lo .audio             mou  = Lo .mouse
+eve  = Lo .event             phy  = Lo .physics
+fil  = Lo .filesystem        sou  = Lo .sound
+fon  = Lo .Font              sys  = Lo .system
+gra  = Lo .graphics          thr  = Lo .thread
+ima  = Lo .image             tim  = Lo .timer
+joy  = Lo .joystick          tou  = Lo .touch
+key  = Lo .keyboard          vid  = Lo .video
+mat  = Lo .math              win  = Lo .window
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+WW  = gra .getWidth()        HH  = gra .getHeight()
 
-ray .distanceToCameraPlane  = w5 /math.tan( halfFov )
-ray .subsequent  = fov /WW -- http://permadi.com/1996/05/ray-casting-tutorial-5/
+-- screen divisions:  quarter,  third,  and tenth
+w25  = WW *0.25                     w33  = WW *0.333
+w1   = WW *0.1     w2  = WW *0.2     w3  = WW *0.3
+w4   = WW *0.4     w5  = WW *0.5     w6  = WW *0.6
+w7   = WW *0.7     w8  = WW *0.8     w9  = WW *0.9
+w66  = WW *0.667                    w75  = WW *0.75
+--                  { w5, h5 }  = center of screen
+h25  = HH *0.25                     h33  = HH *0.333
+h1   = HH *0.1     h2  = HH *0.2     h3  = HH *0.3
+h4   = HH *0.4     h5  = HH *0.5     h6  = HH *0.6
+h7   = HH *0.7     h8  = HH *0.8     h9  = HH *0.9
+h66  = HH *0.667                    h75  = HH *0.75
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- typically, local variables are faster, so use them when you can.
+-- it appears local vars aren't accessible through gamestates, using globals instead.
+-- not a biggie, just make sure you don't re-use names for something else.
 
---~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+FOV  = 90
+halfFOV  = FOV /2
+timer  = 0
 
-function ray :cast()
+level  = 1
+player  = {  dir = 0,
+             begin  = 0,  -- 'begin' is FOV turned left halfway, where raycasting begins
+             x = 2, y = 3,  -- pos
+             speed = .1  }
 
-  local maps  = require 'data.maps'
-  local map  = maps[ level ]
+style  = 'data/fonts/C64_Pro-STYLE.ttf'
+smallFontSize   = 16
+mediumFontSize  = 20
+largeFontSize   = 30
 
-  local hNorm  = player .x %1 -- player pos, normalized to one grid space
-  local vNorm  = player .y %1
+black  = {   0,   0,   0 }
+cBlue  = {  62,  49, 162 }
+ltBlue = { 124, 112, 218 }
+white  = { 255, 255, 255 }
 
-  for i = 1, fov do -- fan out from left to right --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+pad  = 15  -- border padding
+wpad  = WW -pad
+hpad  = HH -pad
 
-    local a  = player.begin +i *ray .subsequent /7 -- start at left of screen, keep incrementing 'till right
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- Clear callbacks -  https://love2d.org/wiki/love
+-- This is so that when you switch gamestate,
+-- it won't try to use callback code from a previously loaded state.
+-- Do the same w/ any callbacks you use, that aren't redefined.
 
-    if a < 180            then hGrid = 1 else hGrid = -1 end
-    if a < 90 or a >= 270 then vGrid = 1 else vGrid = -1 end
+function clearCallbacks()
+  Lo .keypressed  = nil
+  Lo .keyreleased  = nil
+  Lo .mousepressed  = nil
+  Lo .mousereleased  = nil
+  Lo .joystickpressed  = nil
+  Lo .joystickreleased  = nil
+end
 
-    local hStep  = 1 /math.tan( a ) -- check horiz grid intersections
-    local vStep  = math.tan( a ) -- check vert
+-- define state manager, which will load main.lua within respective states subdir
 
-    local horizX  = hStep -hNorm -- initial step is less than full step, so subtract player pos
-    local horizY  = vNorm -- use a new variable, so we don't have to recalculate normalized position next time 'round
+function loadState( state )
+  clearCallbacks()
+  require( 'states.' ..state )
 
-    local vertX  = hNorm -- ditto
-    local vertY  = vStep -vNorm -- initial step, as above
+  print( 'Gamestate:  ' ..state )
+  load()
+end
 
-    local rndHx  = player.x -- set up new variables,
-    local rndHy  = player.y -- so we don't have to
-    local rndVx  = player.x -- recalculate distance,
-    local rndVy  = player.y -- once the value is found.
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ -- initial love.load() function,  each gamestate has its own load() within.
 
-    local collide  = false --======================================================================
+function Lo .load()
+  print('Löve app begin')
 
-    while collide == false do
-      rndHx, rndHy  = hInteger( horizX, horizY, a )
-      rndVx, rndVy  = vInteger(  vertX, vertY, a )
+  for a = 1,  #arg do -- 'arg' is a list of all the args,  so iterate through it.
+    if arg[a] ~= '.' then -- dot is used when loading in Linux,  so we'll skip it.
+      if arg[a] == '-h' or arg[a] == '-help'  then
+        print('This is theTemplate by Doyousketch2 for Love2D\n')
+        eve .quit()
 
-      if     rndHx < 1 or rndHx > map .x then -- Test horiz components for out of bounds
-        collide  = true
-        ray .color[i]  = { 0,0,0 }
+      else -- do something here if certain args are passed.  just prints 'em for demonstration.
+        print('arg ' ..a ..': ' ..arg[a] )
+      end -- if ar ==
+    end -- if ar ~= '.'
+  end -- for arg
 
-      elseif rndHy < 1 or rndHy > map .y then
-        collide  = true
-        ray .color[i]  = { 100,0,0 }
+  -- disable antialiasing, so pixels remain crisp while zooming,  used for pixel art
+  gra .setDefaultFilter( 'nearest',  'nearest',  0 )
 
-      elseif rndVx < 1 or rndVx > map .x then -- Test vert...
-        collide  = true
-        ray .color[i]  = { 0,100,0 }
+ -- initialize random numbers, otherwise Love defaults to the same number each time ?!?
+  mat .setRandomSeed( os .time() )
 
-      elseif rndVy < 1 or rndVy > map .y then
-        collide  = true
-        ray .color[i]  = { 0,0,100 }
+  gra .setBackgroundColor( cBlue )
+  gra .setColor( ltBlue )
+  gra .setLineWidth( pad *2 )
 
-   -- test collisions
-      elseif map[ data ][ rndHy ][ rndHx ] > 0 then
-        collide  = true
-        ray .color[i]  = { 255,200,200 }
+  smallFont   = gra .newFont( style, smallFontSize )
+  mediumFont  = gra .newFont( style, mediumFontSize )
+  largeFont   = gra .newFont( style, largeFontSize )
 
-      elseif map[ data ][ rndVy ][ rndVx ] > 0 then
-        collide  = true
-        ray .color[i]  = { 200,200,255 }
+  gra .setFont( mediumFont )
+  loadState( 'game' )
+end
 
-      else -- if no collisions found, take another step
-        horizX  = horizX +hStep -- add proportional step to find intersections with horizontal walls
-        horizY  = horizY +vGrid -- add full grid step
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        vertX  = vertX +hGrid -- add full grid step to find intersections with vertical walls
-        vertY  = vertY +vStep -- add proportional step
-      end -- collision tests & increment
+function Lo .quit() -- do stuff before exit,  autosave,  say goodbye...
+  print('Löve app exit')
+end -- Lo .quit()
 
-    end -- collision found  =======================================================================
-
-    horizDist  = math.sqrt(rndHx *rndHx  +  rndHy *rndHy) -- pythagorus:  A squared + B squared = C squared
-    vertDist  = math.sqrt(rndVx *rndVx  +  rndVy *rndVy)
-
-    if horizDist < vertDist then
-      ray .dist[i]  = horizDist *math.cos(a) -- cos of angle corrects for barrel distortion
-    else
-      ray .dist[i]  = vertDist *math.cos(a)
-    end -- compare horiz to vert distance, and pick the shorter of the two
-
-      ray .wall[i]  = h5 /ray .dist[i] *ray .distanceToCameraPlane -- calculate projected wall height
-
-  end -- fov loop, fanning out from left to right
-end -- ray :cast()
-
---~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-return ray
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
