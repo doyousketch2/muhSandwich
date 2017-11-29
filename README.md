@@ -29,5 +29,6 @@ Alternatively, open the folder, and do the same thing with *main.lua*
 ---
 
 Lode's Computer Graphics Tutorial  http://lodev.org/cgtutor/raycasting.html  
-Lode's Computer Graphics Tutorial  https://www.youtube.com/watch?v=g4E9iq0BixA  
+How to program 3D graphics from scratch. Without 3D engines. (In Python)   https://www.youtube.com/watch?v=g4E9iq0BixA  
 Minecraft in Python 2016 300 lines... (Classic Clone)  https://www.youtube.com/watch?v=NyBkFkAWnEo  
+How 3D Software Works - 3D Software Development, 3D Programming, 3D Software Rendering Tutorial   https://www.youtube.com/watch?v=A9HrXzD04xI  
