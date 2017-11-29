@@ -8,7 +8,7 @@ local ray  = require 'libs.ray'
 local enemy  = require 'libs.enemy'
 local e  = {} -- list of enemies
 
-local mouseSensitivity  = 0.1
+local mouseSensitivity  = 0.001
 local lineWid  = WW /FOV
 local halfLine  = lineWid /2
 
@@ -41,6 +41,9 @@ function load()
     ray .color[#ray .color +1]  = 0
   end
 
+  mou .setRelativeMode( true )
+  mou .setGrabbed( true )
+
   if mus then
     newSong()  -- begin music
   end -- if mus
@@ -50,6 +53,12 @@ end -- load()
 
 function Lo .keypressed( key, scancode, isrepeat )
   if scancode == 'escape'  then  eve .quit()  end
+
+  if key == 'tab' then  -- toggle opposite
+    local state  = not mou .isGrabbed()
+    mou .setRelativeMode( state )
+    mou .setGrabbed( state )
+  end
 end -- Lo .keypressed
 
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,12 +74,16 @@ end -- Lo .keyreleased
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 function Lo .mousemoved( x, y, dx, dy, istouch )
-  player.dir  = player.dir +(dx *mouseSensitivity)
+  player.rad  = player.rad +dx *mouseSensitivity
+  
+  player.cos  = math.cos( player.rad )
+  player.sin  = math.sin( player.rad )
+  player.dir  = math.deg( player.rad )
 
   if player.dir < 0   then player.dir  = 360 +player.dir end
   if player.dir >= 360 then player.dir  = player.dir -360 end
 
-  player.begin  = player.dir -halfFOV -1
+  player.begin  = player.rad -halfFOV
   -- minus 1, because lists are 1-based.  Better here, than 90 times in FOV loop
 
   if player.begin < 0 then player.begin  = 360 +player.begin end
@@ -88,28 +101,36 @@ function Lo .update( dt ) -- DeltaTime  = time since last update,  in seconds.
   desiredY  = player.y
 
   if key .isDown( 'w' ) then
-    desiredX  = desiredX +math.cos(player.dir) *player.speed
-    desiredY  = desiredY +math.sin(player.dir) *player.speed
-  end -- if key 'W'
+    desiredX  = desiredX +player.cos *player.speed
+    desiredY  = desiredY +player.sin *player.speed
+  end -- if key 'w'
 
   if key .isDown( 'a' ) then
-    desiredX  = desiredX +math.sin(player.dir) *player.speed
-    desiredY  = desiredY -math.cos(player.dir) *player.speed
-  end -- if key 'A'
+    desiredX  = desiredX +player.sin *player.speed
+    desiredY  = desiredY -player.cos *player.speed
+  end -- if key 'a'
 
   if key .isDown( 's' ) then
-    desiredX  = desiredX -math.cos(player.dir) *player.speed
-    desiredY  = desiredY -math.sin(player.dir) *player.speed
-  end -- if key 'S'
+    desiredX  = desiredX -player.cos *player.speed
+    desiredY  = desiredY -player.sin *player.speed
+  end -- if key 's'
 
   if key .isDown( 'd' ) then
+    desiredX  = desiredX -player.sin *player.speed
+    desiredY  = desiredY +player.cos *player.speed
+  end -- if key 'd'
 
-    desiredX  = desiredX -math.sin(player.dir) *player.speed
-    desiredY  = desiredY +math.cos(player.dir) *player.speed
-  end -- if key 'D'
+  if desiredX >= 1 
+    and desiredX < map .x 
+    and map .data[ math.floor( player.y ) ][ math.floor( player.x ) ]
+    then player .x  = desiredX 
+  end
 
-  if desiredX >= 1 and desiredX < map .x then player .x  = desiredX end
-  if desiredY >= 1 and desiredY < map .y then player .y  = desiredY end
+  if desiredY >= 1 
+    and desiredY < map .y 
+    and map .data[ math.floor( player.y ) ][ math.floor( player.x ) ]
+    then player .y  = desiredY 
+  end
 
   ray .cast()
 
@@ -125,13 +146,12 @@ end -- Lo .update(dt)
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 function Lo .draw()
-
   gra .setLineWidth( lineWid )
 
-  for i = 1, FOV do
-    local verticalSlice  = i *lineWid -halfLine
+  for i = 1, FOV do -- each sliver is a vertical slice of the screen
+    local sliver  = i *lineWid -halfLine
     gra .setColor( ray .color[i] )
-    gra .line( verticalSlice,  h5 -ray .wall[i],  verticalSlice,  h5 +ray .wall[i] )
+    gra .line( sliver,  h5 -ray .wall[i],  sliver,  h5 +ray .wall[i] )
   end -- FOV
 
   -- Minimap ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -156,7 +176,7 @@ function Lo .draw()
   local miniY  = h1 +player .y *mapScale
 
   for i = 1, FOV do
-    local angle  = math.rad( player.begin +i )
+    local angle  = player.begin +math.rad(i)
 
     gra .setColor( 50, 30 +i *2.5, 50 )
     local xray  = math.cos( angle ) *ray .dist[i] *mapScale
@@ -173,8 +193,7 @@ function Lo .draw()
   -- debug info ~~~~~~~~~~~~~~~~~~~~~~~
 
   gra .setColor( 255, 0, 0 )
-  gra .print( 'Begin: ' ..player.begin ..'\n'
-            ..' Dir: ' ..player.dir ..'\n'
+  gra .print( ' Dir: ' ..player.dir ..'\n'
             ..'  X: ' ..player.x ..'\n'
             ..'  Y: ' ..player.y,   pad,  pad )
 
