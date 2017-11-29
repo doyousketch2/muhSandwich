@@ -1,128 +1,180 @@
---~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
---  Löve theTemplate       GNU GPLv3          @Doyousketch2
+ray  = {} -- namespace
 
--- global abbreviations,  can be used in any module.
-Lo   = love                  halfpi  = math.pi /2
-threeqpi  = math.pi *0.75    tau  = math.pi *2
--- look in conf.lua to enable necessary modules.
-aud  = Lo .audio             mou  = Lo .mouse
-eve  = Lo .event             phy  = Lo .physics
-fil  = Lo .filesystem        sou  = Lo .sound
-fon  = Lo .Font              sys  = Lo .system
-gra  = Lo .graphics          thr  = Lo .thread
-ima  = Lo .image             tim  = Lo .timer
-joy  = Lo .joystick          tou  = Lo .touch
-key  = Lo .keyboard          vid  = Lo .video
-mat  = Lo .math              win  = Lo .window
---~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-WW  = gra .getWidth()        HH  = gra .getHeight()
+ray .dist  = {}
+ray .wall  = {}
+ray .color  = {}
 
--- screen divisions:  quarter,  third,  and tenth
-w25  = WW *0.25                     w33  = WW *0.333
-w1   = WW *0.1     w2  = WW *0.2     w3  = WW *0.3
-w4   = WW *0.4     w5  = WW *0.5     w6  = WW *0.6
-w7   = WW *0.7     w8  = WW *0.8     w9  = WW *0.9
-w66  = WW *0.667                    w75  = WW *0.75
---                  { w5, h5 }  = center of screen
-h25  = HH *0.25                     h33  = HH *0.333
-h1   = HH *0.1     h2  = HH *0.2     h3  = HH *0.3
-h4   = HH *0.4     h5  = HH *0.5     h6  = HH *0.6
-h7   = HH *0.7     h8  = HH *0.8     h9  = HH *0.9
-h66  = HH *0.667                    h75  = HH *0.75
---~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--- typically, local variables are faster, so use them when you can.
--- it appears local vars aren't accessible through gamestates, using globals instead.
--- not a biggie, just make sure you don't re-use names for something else.
+ray .maxSteps  = 12  -- max view distance
+ray .cameraPlane  = w5 /math.tan( halfFOV )
 
-FOV  = 90
-halfFOV  = FOV /2
-timer  = 0
+--[[
 
-level  = 1
-player  = {  dir = 0,
-             begin  = 0,  -- 'begin' is FOV turned left halfway, where raycasting begins
-             x = 2, y = 3,  -- pos
-             speed = .1  }
+   //======  90  =====##
+   ||        .        ||
+   ||        |        ||
+   ||   II   |   I    ||
+             |
+  180  ~~~~~~+~~~~~~  0
+             |
+   ||  III   |  IV    ||
+   ||        |        ||
+   ||        '        ||
+   ##=====  270  =====//
 
-style  = 'data/fonts/C64_Pro-STYLE.ttf'
-smallFontSize   = 16
-mediumFontSize  = 20
-largeFontSize   = 30
 
-black  = {   0,   0,   0 }
-cBlue  = {  62,  49, 162 }
-ltBlue = { 124, 112, 218 }
-white  = { 255, 255, 255 }
+Rays in quadrant I  approaching Horiz wall:  (1.25, 1.25)  ~  (1.25, 1)  floor y
+Rays in quadrant I  approaching Vert wall:  (1.25, 1.25)  ~  (1, 1.25)  floor x
 
-pad  = 15  -- border padding
-wpad  = WW -pad
-hpad  = HH -pad
+Rays in quadrant II  approaching Horiz wall:  (-1.25, 1.25)   ~  (-1.25, 1)  floor y
+Rays in quadrant II  approaching Vert wall:  (-1.25, 1.25)   ~  (-1, 1.25)  floor x
 
---~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--- Clear callbacks -  https://love2d.org/wiki/love
--- This is so that when you switch gamestate,
--- it won't try to use callback code from a previously loaded state.
--- Do the same w/ any callbacks you use, that aren't redefined.
+Rays in quadrant III  approaching Horiz wall:  (-1.25, -1.25)  ~  (-1.25, -1)  floor y
+Rays in quadrant III  approaching Vert wall:  (-1.25, -1.25)  ~  (-1, -1.25)  floor x
 
-function clearCallbacks()
-  Lo .keypressed  = nil
-  Lo .keyreleased  = nil
-  Lo .mousepressed  = nil
-  Lo .mousereleased  = nil
-  Lo .joystickpressed  = nil
-  Lo .joystickreleased  = nil
-end
+Rays in quadrant IV  approaching Horiz wall:  (1.25, -1.25)   ~  (1.25, -1)  floor y
+Rays in quadrant IV  approaching Vert wall:  (1.25, -1.25)   ~  (1, -1.25)  floor x
 
--- define state manager, which will load main.lua within respective states subdir
+]]--
 
-function loadState( state )
-  clearCallbacks()
-  require( 'states.' ..state )
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  print( 'Gamestate:  ' ..state )
-  load()
-end
+function ray :cast()
 
---~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- -- initial love.load() function,  each gamestate has its own load() within.
+  local maps  = require 'data.maps'
+  local map  = maps[ level ]
 
-function Lo .load()
-  print('Löve app begin')
+  -- Adding 1 here, so we can read Y-axis bottom-up, instead of top-down.
+  local yPlus1  = map.y +1 -- Otherwise, subtracting position, you'd reach 0...
+  -- which would be out of bounds for map data, 'cuz lists start from 1.
 
-  for a = 1,  #arg do -- 'arg' is a list of all the args,  so iterate through it.
-    if arg[a] ~= '.' then -- dot is used when loading in Linux,  so we'll skip it.
-      if arg[a] == '-h' or arg[a] == '-help'  then
-        print('This is theTemplate by Doyousketch2 for Love2D\n')
-        eve .quit()
+  local normX  = player.x %1  -- player pos, normalized to one grid space
+  local normY  = player.y %1
+  local invX  = 1 -normX      -- inverted value
+  local invY  = 1 -normY
 
-      else -- do something here if certain args are passed.  just prints 'em for demonstration.
-        print('arg ' ..a ..': ' ..arg[a] )
-      end -- if ar ==
-    end -- if ar ~= '.'
-  end -- for arg
+  for i = 1, FOV do -- fan out from left to right  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  -- disable antialiasing, so pixels remain crisp while zooming,  used for pixel art
-  gra .setDefaultFilter( 'nearest',  'nearest',  0 )
+    local angle  = player.begin +math.rad(i)  -- start @ left of screen, increment i
 
- -- initialize random numbers, otherwise Love defaults to the same number each time ?!?
-  mat .setRandomSeed( os .time() )
+    if angle < halfpi then       -- quad I  = positive rise,  positive run
+      hRise  = invY
+      hRiseInit  = normY
+      hRun  = math.tan( angle )
+      hRunInit  = hRun *invY
 
-  gra .setBackgroundColor( cBlue )
-  gra .setColor( ltBlue )
-  gra .setLineWidth( pad *2 )
+      vRise  = math.tan( angle )
+      vRiseInit  = vRise *invX
+      vRun  = 1
+      vRunInit  = invX
 
-  smallFont   = gra .newFont( style, smallFontSize )
-  mediumFont  = gra .newFont( style, mediumFontSize )
-  largeFont   = gra .newFont( style, largeFontSize )
+    elseif angle < math.pi then  -- quad II  = positive rise,  negative run
+      hRise  = 1
+      hRiseInit  = invY
+      hRun  = -math.tan( angle )
+      hRunInit  = hRun *invY
 
-  gra .setFont( mediumFont )
-  loadState( 'game' )
-end
+      vRise  = math.tan( angle )
+      vRiseInit  = vRise *normX
+      vRun  = -1
+      vRunInit  = -normX
 
---~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    elseif angle < threeqpi then  -- quad III  = negative rise,  negative run
+      hRise  = -1
+      hRiseInit  = -normY
+      hRun  = -math.tan( angle )
+      hRunInit  = hRun *normY
 
-function Lo .quit() -- do stuff before exit,  autosave,  say goodbye...
-  print('Löve app exit')
-end -- Lo .quit()
+      vRise  = -math.tan( angle )
+      vRiseInit  = vRise *normX
+      vRun  = -1
+      vRunInit  = -normX
 
---~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    else                     -- quad IV  = negative rise,  positive run
+      hRise  = -1
+      hRiseInit  = -normY
+      hRun  = math.tan( angle )
+      hRunInit  = hRun *normY
+
+      vRise  = -math.tan( angle )
+      vRiseInit  = vRise *invX
+      vRun  = 1
+      vRunInit  = invX
+    end
+
+    local horizX  = player.x
+    local horizY  = player.y
+    local vertX  = player.x
+    local vertY  = player.y
+
+    local step  = 0
+    local collide  = false --======================================================================
+
+    while collide == false and step < ray .maxSteps do
+
+      if     horizX < 1 or horizX > map .x then -- horiz bounds
+        ray .color[i]  = { 0,0,0 }
+        collide  = true
+
+      elseif horizY < 1 or horizY > map .y then
+        ray .color[i]  = { 100,0,0 }
+        collide  = true
+
+      elseif vertX < 1 or vertX > map .x then -- vert bounds
+        ray .color[i]  = { 0,100,0 }
+        collide  = true
+
+      elseif vertY < 1 or vertY > map .y then
+        ray .color[i]  = { 0,0,100 }
+        collide  = true
+
+      else  -- not out of bounds, test for collisions
+
+        floorHx  = math.floor(horizX)
+        floorHy  = math.floor(horizY)
+        floorVx  = math.floor(vertX)
+        floorVy  = math.floor(vertY)
+
+        -- print('H: ' ..floorHx ..'  ' ..floorHy)
+        -- print('V: ' ..floorVx ..'  ' ..floorVy)
+
+        -- subtracting y from yPlus1 is so that it reads map data bottom-up.
+
+        if map .data[ yPlus1 -floorHy ][ floorHx ] > 0 then
+          ray .color[i]  = { 255,200,200 }
+          collide  = true
+
+        elseif map .data[ yPlus1 -floorVy ][ floorVx ] > 0 then
+          ray .color[i]  = { 200,200,255 }
+          collide  = true
+        end -- collision test
+
+        -- if no collisions found, take another step
+
+        horizX  = horizX +hRun
+        horizY  = horizY +hRise
+
+        vertX  = vertX +vRun
+        vertY  = vertY +vRise
+        step  = step +1
+      end -- tests
+
+    end -- while collide == false =================================================================
+
+    horizDist  = math.sqrt(floorHx *floorHx  +  floorHy *floorHy)
+     -- pythagorus:  A squared + B squared = C squared
+    vertDist  = math.sqrt(floorVx *floorVx  +  floorVy *floorVy)
+
+    if horizDist < vertDist then
+      ray .dist[i]  = horizDist *math.cos( angle ) -- cos of angle corrects for barrel distortion
+    else
+      ray .dist[i]  = vertDist *math.cos( angle )
+    end -- compare horiz to vert distance, and pick the shorter of the two
+
+      ray .wall[i]  = h5 /ray .dist[i] *ray .cameraPlane -- calculate projected wall height
+
+  end -- FOV loop, fanning out from left to right
+end -- ray :cast()
+
+--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+return ray
