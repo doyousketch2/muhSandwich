@@ -4,6 +4,7 @@
 -- global abbreviations,  can be used in any module.
 Lo   = love                  halfpi  = math.pi /2
 threeqpi  = math.pi *0.75    tau  = math.pi *2
+
 -- look in conf.lua to enable necessary modules.
 aud  = Lo .audio             mou  = Lo .mouse
 eve  = Lo .event             phy  = Lo .physics
@@ -30,18 +31,18 @@ h4   = HH *0.4     h5  = HH *0.5     h6  = HH *0.6
 h7   = HH *0.7     h8  = HH *0.8     h9  = HH *0.9
 h66  = HH *0.667                    h75  = HH *0.75
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--- typically, local variables are faster, so use them when you can.
--- it appears local vars aren't accessible through gamestates, using globals instead.
--- not a biggie, just make sure you don't re-use names for something else.
 
 FOV  = 90
-halfFOV  = FOV /2
+halfFOV  = math.rad( FOV /2 +1 )
 timer  = 0
 
 level  = 1
-player  = {  dir = 0,
-             begin  = 0,  -- 'begin' is FOV turned left halfway, where raycasting begins
-             x = 2, y = 3,  -- pos
+player  = {  x = 2, y = 3,  -- pos
+             rad  = 0,  -- lua prefers trig in radians
+             cos  = 0,  -- quicker to calculate once during mousemove
+             sin  = 0,  -- then to recalculate during each step
+             dir  = 0,  -- only used to display compass
+             begin  = -halfFOV,  -- FOV turned left halfway, where raycasting begins
              speed = .1  }
 
 style  = 'data/fonts/C64_Pro-STYLE.ttf'
@@ -59,10 +60,6 @@ wpad  = WW -pad
 hpad  = HH -pad
 
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
--- Clear callbacks -  https://love2d.org/wiki/love
--- This is so that when you switch gamestate,
--- it won't try to use callback code from a previously loaded state.
--- Do the same w/ any callbacks you use, that aren't redefined.
 
 function clearCallbacks()
   Lo .keypressed  = nil
@@ -73,7 +70,7 @@ function clearCallbacks()
   Lo .joystickreleased  = nil
 end
 
--- define state manager, which will load main.lua within respective states subdir
+-- define state manager, which will load that .lua within states subdir
 
 function loadState( state )
   clearCallbacks()
@@ -84,7 +81,7 @@ function loadState( state )
 end
 
 --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- -- initial love.load() function,  each gamestate has its own load() within.
+ -- initial love.load() function,  each gamestate has its own load() also.
 
 function Lo .load()
   print('Löve app begin')
